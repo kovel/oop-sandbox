@@ -1,12 +1,17 @@
 package org.example;
 
-import org.example.controller.*;
+import org.example.controller.AfishaController;
+import org.example.controller.BackupController;
+import org.example.controller.FavIconController;
+import org.example.controller.IndexController;
 import org.example.router.DAORouterPlugin;
-import org.example.router.Router;
+import org.example.router.FrontController;
 
 public class Main {
     public static void main(String[] args) {
-        var router = Router.of(args);
+        var fc = new FrontController<>(args);
+
+        var router = fc.getRouter();
 
         // plugins
         router.registerPlugin(new DAORouterPlugin());
@@ -17,6 +22,6 @@ public class Main {
         router.register("favicon.ico", FavIconController.class);
         router.register("afisha", AfishaController.class);
 
-        router.process();
+        fc.dispatch();
     }
 }

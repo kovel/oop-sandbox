@@ -4,8 +4,9 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class ControllerResponse {
+    private boolean isPrintable = true;
     private final byte[] data;
-
+    private int statusCode = 200;
     private final Map<String, String> headers = new TreeMap<>();
 
     private ControllerResponse(byte[] data) {
@@ -16,18 +17,31 @@ public class ControllerResponse {
         return data;
     }
     public  ControllerResponse header (String name, String value) {
-
         this.headers.put(name, value);
-
-        return  this;
+        return this;
 
     }
 
-    public  String renderHeaders () {
+    public boolean isPrintable() {
+        return isPrintable;
+    }
 
+    public void setPrintable(boolean printable) {
+        isPrintable = printable;
+    }
+
+    public ControllerResponse status(int statusCode) {
+        this.statusCode = statusCode;
+        return this;
+    }
+
+    public int getStatusCode() {
+        return statusCode;
+    }
+
+    public String renderHeaders () {
         StringBuilder builder = new StringBuilder();
-        headers.forEach((name,value)->{builder.append(name).append(": ").append(value).append("\r\n");});
-
+        headers.forEach((name, value) -> builder.append(name).append(": ").append(value).append("\r\n"));
         return builder.toString();
 
     }
@@ -42,5 +56,10 @@ public class ControllerResponse {
 
     public static ControllerResponse of() {
         return new ControllerResponse(new byte[0]);
+    }
+
+    @Override
+    public String toString() {
+        return new String(this.data);
     }
 }
