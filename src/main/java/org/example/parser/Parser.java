@@ -72,16 +72,18 @@ public class Parser {
     private List<Seance> getClosestSeances(List<Seance> seances) {
         LocalDateTime dateTimeNow = LocalDateTime.now();
         return seances.stream()
-                .filter(seance -> seance.getDateTime().isAfter(dateTimeNow))
-                .sorted(Comparator.comparing(Seance::getDateTime))
-                .limit(20)
+                .filter(seance -> LocalDateTime.parse(seance.getDateTime(), DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm"))
+                        .isAfter(dateTimeNow))
+                .sorted(Comparator.comparing(seance -> LocalDateTime.parse(seance.getDateTime(),
+                        DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm"))))
+                .limit(10)
                 .toList();
     }
 
-    private static LocalDateTime getSeanceDateTime(Element time) {
+    private static String getSeanceDateTime(Element time) {
         int hour = Integer.parseInt(time.text().split(":")[0]);
         int minute = Integer.parseInt(time.text().split(":")[1]);
-        return LocalDate.now().atTime(hour, minute);
+        return LocalDate.now().atTime(hour, minute).format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm"));
     }
 }
 

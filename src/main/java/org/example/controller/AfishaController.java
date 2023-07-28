@@ -90,19 +90,19 @@ public class AfishaController implements IController {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         try {
-            addRecordsToAirtable();
+            addRecordsToAirtable(seances);
             return objectMapper.writeValueAsString(seances);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void addRecordsToAirtable(){
+    private void addRecordsToAirtable(List<Seance> seances) throws JsonProcessingException {
         Airtable airtable = new Airtable();
-        if(!airtable.isTableExist("Seances")){
+        if (!airtable.isTableExist("Seances")) {
             airtable.createTable();
         }
-        airtable.addRecords();
+        airtable.addRecords(seances);
     }
 
 }
