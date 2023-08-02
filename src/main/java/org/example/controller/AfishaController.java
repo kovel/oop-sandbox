@@ -3,6 +3,7 @@ package org.example.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.example.integration.Airtable;
 import org.example.parser.Parser;
 import org.example.parser.Seance;
 import org.example.router.HttpRouterParameters;
@@ -29,9 +30,7 @@ public class AfishaController implements IController {
                 case "DELETE" -> {
                     return this.deleteAction(httpArgs.getRequestLine().getPath().get(2));
                 }
-                default -> {
-                    throw new RuntimeException(String.format("Wrong method: %s", httpMethod));
-                }
+                default -> throw new RuntimeException(String.format("Wrong method: %s", httpMethod));
             }
         } else {
             return this.indexAction();
@@ -91,9 +90,19 @@ public class AfishaController implements IController {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         try {
+            addRecordsToAirtable(seances);
             return objectMapper.writeValueAsString(seances);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
+
+    private void addRecordsToAirtable(List<Seance> seances) throws JsonProcessingException {
+        Airtable airtable = new Airtable();
+        if (!airtable.isTableExist("Seances")) {
+            airtable.createTable();
+        }
+        airtable.addRecords(seances);
+    }
+
 }
