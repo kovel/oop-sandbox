@@ -1,7 +1,13 @@
 services:
   web:
+    depends_on:
+      - puppeteer
     build: .
     ports:
       - "8080:8080"
-#  puppeteer:
-#    image: redis
+  puppeteer:
+    build:
+      context: ./puppeteer
+      dockerfile: Dockerfile
+    ports:
+      - "18080:8080"
