@@ -30,7 +30,7 @@ public class AfishaController implements IController {
             switch (httpMethod) {
                 case "GET" -> {
                     if (String.join("/", httpArgs.getRequestLine().getPath()).endsWith("/pdf")) {
-                        var channel = Grpc.newChannelBuilder("localhost:50051", InsecureChannelCredentials.create())
+                        var channel = Grpc.newChannelBuilder("puppeteer:50051", InsecureChannelCredentials.create())
                                 .build();
                         var blockingStub = PdfServiceGrpc.newBlockingStub(channel);
 

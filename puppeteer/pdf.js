@@ -22,7 +22,7 @@ const http = require('http');
 const puppeteer = require('puppeteer');
 const base64 = require('base64-js');
 
-let PROTO_PATH = '/Users/user/IdeaProjects/bsu/oop-sandbox/src/main/proto/sandbox.proto';
+let PROTO_PATH = './sandbox.proto';
 let grpc = require('@grpc/grpc-js');
 let protoLoader = require('@grpc/proto-loader');
 // Suggested options for similarity to existing grpc.load behavior
@@ -37,17 +37,13 @@ let packageDefinition = protoLoader.loadSync(
 let protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
 // The protoDescriptor object has the full package hierarchy
 let PdfService = protoDescriptor.PdfService;
-let PdfRequest = protoDescriptor.PdfRequest;
-let PdfResponse = protoDescriptor.PdfResponse;
-// console.log(PdfResponse)
-// process.exit(0)
 
 async function getPdf(call, callback) {
     (async (call) => {
         console.log(`handling ${call.request.url}`)
         const browser = await puppeteer.launch({
             headless: 'new',
-            //executablePath: '/app/chrome/linux-117.0.5931.0/chrome-linux64/chrome',
+            executablePath: '/app/chrome/linux-117.0.5931.0/chrome-linux64/chrome',
             args: ['--no-sandbox']
         });
         const page = await browser.newPage();

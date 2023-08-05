@@ -7,12 +7,14 @@ import org.example.router.RouteParameters;
 import org.example.service.PdfServiceGrpc;
 import org.example.service.Pdfs;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Base64;
 
 public class NewsController implements IController {
     @Override
     public ControllerResponse run(RouteParameters args) {
-        var channel = Grpc.newChannelBuilder("localhost:50051", InsecureChannelCredentials.create())
+        var channel = Grpc.newChannelBuilder("127.0.0.1:50051", InsecureChannelCredentials.create())
                 .build();
         var blockingStub = PdfServiceGrpc.newBlockingStub(channel);
 

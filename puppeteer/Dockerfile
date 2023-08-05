@@ -11,5 +11,6 @@ RUN npm i
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
 COPY ./pdf.js /app/
+COPY ./sandbox.proto /app/
 
 CMD ["node", "pdf.js"]
