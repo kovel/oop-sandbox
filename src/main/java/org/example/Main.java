@@ -1,9 +1,6 @@
 package org.example;
 
-import org.example.controller.AfishaController;
-import org.example.controller.BackupController;
-import org.example.controller.FavIconController;
-import org.example.controller.IndexController;
+import org.example.controller.*;
 import org.example.router.DAORouterPlugin;
 import org.example.router.FrontController;
 
@@ -21,6 +18,7 @@ public class Main {
         router.register("backup", BackupController.class);
         router.register("favicon.ico", FavIconController.class);
         router.register("afisha", AfishaController.class);
+        router.register("news", NewsController.class);
 
         fc.dispatch();
     }

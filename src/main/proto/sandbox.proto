@@ -13,5 +13,5 @@ message PdfRequest {
 
 //The response message.
 message PdfResponse {
-  string path = 1;
+  string data = 1;
 }

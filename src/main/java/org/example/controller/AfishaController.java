@@ -3,16 +3,23 @@ package org.example.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.grpc.Grpc;
+import io.grpc.InsecureChannelCredentials;
+import io.grpc.StatusRuntimeException;
 import org.example.integration.Airtable;
 import org.example.parser.Parser;
 import org.example.parser.Seance;
 import org.example.router.HttpRouterParameters;
 import org.example.router.RouteParameters;
+import org.example.service.PdfServiceGrpc;
+import org.example.service.Pdfs;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Base64;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class AfishaController implements IController {
 
@@ -22,6 +29,21 @@ public class AfishaController implements IController {
             var httpMethod = httpArgs.getRequestLine().getMethod();
             switch (httpMethod) {
                 case "GET" -> {
+                    if (String.join("/", httpArgs.getRequestLine().getPath()).endsWith("/pdf")) {
+                        var channel = Grpc.newChannelBuilder("localhost:50051", InsecureChannelCredentials.create())
+                                .build();
+                        var blockingStub = PdfServiceGrpc.newBlockingStub(channel);
+
+                        Pdfs.PdfRequest request = Pdfs.PdfRequest.newBuilder().setUrl("https://afisha.relax.by/kino/minsk/").build();
+                        Pdfs.PdfResponse response;
+                        try {
+                            response = blockingStub.getPdf(request);
+                            return ControllerResponse.of(Base64.getDecoder().decode(response.getData().getBytes()))
+                                    .header("Content-Type", "application/pdf");
+                        } catch (StatusRuntimeException e) {
+                            e.printStackTrace();
+                        }
+                    }
                     return this.indexAction();
                 }
                 case "POST" -> {

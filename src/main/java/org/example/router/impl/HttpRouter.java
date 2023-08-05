@@ -107,7 +107,7 @@ public class HttpRouter<T extends Class<? extends IController>> extends Router<T
                 } while (headerLine.isBlank());
 
                 var response = processHttpArguments(requestLineDto, headers);
-                writeResponse(this.s.getOutputStream(), response.getStatusCode(), new String(response.getData()), response.renderHeaders());
+                writeResponse(this.s.getOutputStream(), response.getStatusCode(), response.getData(), response.renderHeaders());
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -120,14 +120,14 @@ public class HttpRouter<T extends Class<? extends IController>> extends Router<T
         }
 
 
-        private void writeResponse(OutputStream os, int statusCode, String s, String headers) throws Exception {
+        private void writeResponse(OutputStream os, int statusCode, byte[] content, String headers) throws Exception {
             String response = "HTTP/1.1 " + statusCode + " OK\r\n" +
                     "Server: Http Server/2009-09-09\r\n" +
                     headers+
-                    "Content-Length: " + s.getBytes().length + "\r\n" +
+                    "Content-Length: " + content.length + "\r\n" +
                     "Connection: close\r\n\r\n";
-            String result = response + s;
-            os.write(result.getBytes());
+            os.write(response.getBytes());
+            os.write(content);
             os.flush();
         }
     }

@@ -65,7 +65,7 @@ public class GrpcMain {
     static class PdfServiceImpl extends PdfServiceGrpc.PdfServiceImplBase {
         @Override
         public void getPdf(Pdfs.PdfRequest request, StreamObserver<Pdfs.PdfResponse> responseObserver) {
-            Pdfs.PdfResponse response = Pdfs.PdfResponse.newBuilder().setPath("./path/to/pdf").build();
+            Pdfs.PdfResponse response = Pdfs.PdfResponse.newBuilder().setData("./path/to/pdf").build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         }
