@@ -22,8 +22,9 @@ import java.sql.SQLException;
 import java.util.Base64;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
-public class AfishaController implements IController {
+public class CustomerController implements IController {
 
     @DAO("database")
     private DatabaseDAO dao;
@@ -34,45 +35,57 @@ public class AfishaController implements IController {
             var httpMethod = httpArgs.getRequestLine().getMethod();
             switch (httpMethod) {
                 case "GET" -> {
-                    if (String.join("/", httpArgs.getRequestLine().getPath()).endsWith("/pdf")) {
-                        var channel = Grpc.newChannelBuilder("puppeteer:50051", InsecureChannelCredentials.create())
-                                .build();
-                        var blockingStub = PdfServiceGrpc.newBlockingStub(channel);
-
-                        Pdfs.PdfRequest request = Pdfs.PdfRequest.newBuilder().setUrl("https://afisha.relax.by/kino/minsk/").build();
-                        Pdfs.PdfResponse response;
-                        try {
-                            response = blockingStub.getPdf(request);
-                            return ControllerResponse.of(Base64.getDecoder().decode(response.getData().getBytes()))
-                                    .header("Content-Type", "application/pdf");
-                        } catch (StatusRuntimeException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    return this.indexAction();
+                    return this.indexAction(httpArgs);
                 }
                 case "POST" -> {
-                    return this.createAction();
+                    return this.postAction(httpArgs);
                 }
                 case "PUT" -> {
-                    try {
-                        return this.fillDatabase(httpArgs);
-                    } catch (SQLException e) {
-                        e.printStackTrace();
-                        throw new RuntimeException(e);
-                    }
+                    return this.putAction(httpArgs);
                 }
                 case "DELETE" -> {
                     return this.deleteAction(httpArgs.getRequestLine().getPath().get(2));
                 }
-                default -> throw new RuntimeException(String.format("Wrong method: %s", httpMethod));
+                default -> {
+                    return ControllerResponse.of().status(400);
+                }
             }
         } else {
-            return this.indexAction();
+            return ControllerResponse.of().status(400);
         }
     }
 
-    private ControllerResponse fillDatabase(HttpRouterParameters args) throws SQLException {
+    private ControllerResponse indexAction(HttpRouterParameters httpArgs) {
+        var query = httpArgs.getRequestLine().getQuery();
+        var c = this.dao.getConnection();
+
+        List<Map<String, Object>> customers = new LinkedList<>();
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+
+        var startedAt = System.currentTimeMillis();
+        try (var ps = c.prepareStatement("SELECT * FROM public.oop_customer ORDER BY lastname, firstname")) {
+            try (var rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    customers.add(
+                            Map.of(
+                                    "id", rs.getInt(1),
+                                    "firstname", rs.getString(2),
+                                    "lastname", rs.getString(3)
+                            )
+                    );
+                }
+            }
+            System.out.printf("customer list done in %d ms\n", System.currentTimeMillis() - startedAt);
+
+            return ControllerResponse.of(objectMapper.writeValueAsString(customers))
+                    .header("Content-Type", "application/json");
+        } catch (SQLException | JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private ControllerResponse postAction(HttpRouterParameters args) {
         var query = args.getRequestLine().getQuery();
         var c = this.dao.getConnection();
 
@@ -82,11 +95,46 @@ public class AfishaController implements IController {
             ps.setString(2, query.stream().filter(pair -> pair.containsKey("lastname")).map(pair -> pair.get("lastname")).findFirst().orElseThrow(RuntimeException::new));
             System.out.println(ps.executeUpdate());
             System.out.printf("%d ms\n", System.currentTimeMillis() - startedAt);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
         return ControllerResponse.of();
     }
 
+    private ControllerResponse putAction(HttpRouterParameters args) {
+        var query = args.getRequestLine().getQuery();
+        var c = this.dao.getConnection();
+
+        var startedAt = System.currentTimeMillis();
+        try (var ps = c.prepareStatement("UPDATE public.oop_customer SET firstname = ?, lastname = ? WHERE id = ?")) {
+            ps.setString(1, query.stream().filter(pair -> pair.containsKey("firstname")).map(pair -> pair.get("firstname")).findFirst().orElseThrow(RuntimeException::new));
+            ps.setString(2, query.stream().filter(pair -> pair.containsKey("lastname")).map(pair -> pair.get("lastname")).findFirst().orElseThrow(RuntimeException::new));
+            ps.setInt(3, query.stream().filter(pair -> pair.containsKey("id")).map(pair -> Integer.parseInt(pair.get("id"))).findFirst().orElseThrow(RuntimeException::new));
+            System.out.println(ps.executeUpdate());
+            System.out.printf("%d ms\n", System.currentTimeMillis() - startedAt);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return ControllerResponse.of().status(204);
+    }
+
     private ControllerResponse deleteAction(String index) {
+        var idx = Integer.parseInt(index);
+        var c = this.dao.getConnection();
+
+        var startedAt = System.currentTimeMillis();
+        try (var ps = c.prepareStatement("DELETE FROM public.oop_customer WHERE id = ?")) {
+            ps.setInt(1, idx);
+            System.out.println(ps.executeUpdate());
+            System.out.printf("Deleted in %d ms\n", System.currentTimeMillis() - startedAt);
+
+            return ControllerResponse.of().status(204);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private ControllerResponse deleteInFile(String index) {
         var idx = Integer.parseInt(index);
         System.out.println("Deleting #" + idx);
 
@@ -124,7 +172,22 @@ public class AfishaController implements IController {
         }
     }
 
-    public ControllerResponse indexAction() {
+    public ControllerResponse indexAfishaAction(HttpRouterParameters httpArgs) {
+        if (String.join("/", httpArgs.getRequestLine().getPath()).endsWith("/pdf")) {
+            var channel = Grpc.newChannelBuilder("puppeteer:50051", InsecureChannelCredentials.create())
+                    .build();
+            var blockingStub = PdfServiceGrpc.newBlockingStub(channel);
+
+            Pdfs.PdfRequest request = Pdfs.PdfRequest.newBuilder().setUrl("https://afisha.relax.by/kino/minsk/").build();
+            Pdfs.PdfResponse response;
+            try {
+                response = blockingStub.getPdf(request);
+                return ControllerResponse.of(Base64.getDecoder().decode(response.getData().getBytes()))
+                        .header("Content-Type", "application/pdf");
+            } catch (StatusRuntimeException e) {
+                e.printStackTrace();
+            }
+        }
         return ControllerResponse.of(getAfishaContent())
                 .header("Content-Type", "application/json");
     }
