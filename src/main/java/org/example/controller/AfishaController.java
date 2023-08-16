@@ -6,6 +6,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.StatusRuntimeException;
+import org.example.annotation.DAO;
+import org.example.dao.DatabaseDAO;
 import org.example.integration.Airtable;
 import org.example.parser.Parser;
 import org.example.parser.Seance;
@@ -16,12 +18,15 @@ import org.example.service.Pdfs;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.Base64;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class AfishaController implements IController {
+
+    @DAO("database")
+    private DatabaseDAO dao;
 
     @Override
     public ControllerResponse run(RouteParameters args) {
@@ -49,6 +54,14 @@ public class AfishaController implements IController {
                 case "POST" -> {
                     return this.createAction();
                 }
+                case "PUT" -> {
+                    try {
+                        return this.fillDatabase(httpArgs);
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                        throw new RuntimeException(e);
+                    }
+                }
                 case "DELETE" -> {
                     return this.deleteAction(httpArgs.getRequestLine().getPath().get(2));
                 }
@@ -57,6 +70,20 @@ public class AfishaController implements IController {
         } else {
             return this.indexAction();
         }
+    }
+
+    private ControllerResponse fillDatabase(HttpRouterParameters args) throws SQLException {
+        var query = args.getRequestLine().getQuery();
+        var c = this.dao.getConnection();
+
+        var startedAt = System.currentTimeMillis();
+        try (var ps = c.prepareStatement("INSERT INTO public.oop_customer (firstname, lastname) VALUES (?, ?)")) {
+            ps.setString(1, query.stream().filter(pair -> pair.containsKey("firstname")).map(pair -> pair.get("firstname")).findFirst().orElseThrow(RuntimeException::new));
+            ps.setString(2, query.stream().filter(pair -> pair.containsKey("lastname")).map(pair -> pair.get("lastname")).findFirst().orElseThrow(RuntimeException::new));
+            System.out.println(ps.executeUpdate());
+            System.out.printf("%d ms\n", System.currentTimeMillis() - startedAt);
+        }
+        return ControllerResponse.of();
     }
 
     private ControllerResponse deleteAction(String index) {
@@ -112,11 +139,24 @@ public class AfishaController implements IController {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         try {
-            addRecordsToAirtable(seances);
+            //addRecordsToAirtable(seances);
+            fillPostgres(seances);
             return objectMapper.writeValueAsString(seances);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void fillPostgres(List<Seance> seances) {
+        var c = this.dao.getConnection();
+        seances.forEach(s -> {
+            try (var ps = c.prepareStatement("INSERT INTO public.oop_movie_theatre (name) VALUES (?)")) {
+                ps.setString(1, s.getCinema());
+                System.out.println(ps.executeUpdate());
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     private void addRecordsToAirtable(List<Seance> seances) throws JsonProcessingException {

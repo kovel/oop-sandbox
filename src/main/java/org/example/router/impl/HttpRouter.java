@@ -10,10 +10,8 @@ import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
+import java.util.stream.Stream;
 
 public class HttpRouter<T extends Class<? extends IController>> extends Router<T> {
     public static final Integer CONTROLLER_INDEX = 1;
@@ -56,11 +54,13 @@ public class HttpRouter<T extends Class<? extends IController>> extends Router<T
     public static class HttpRequestLine {
         private final String method;
         private final List<String> path;
+        private final List<Map<String, String>> query;
         private final String protocol;
 
-        public HttpRequestLine(String method, List<String> path, String protocol) {
+        public HttpRequestLine(String method, List<String> path, List<Map<String, String>> query, String protocol) {
             this.method = method;
             this.path = path;
+            this.query = query;
             this.protocol = protocol;
         }
 
@@ -74,6 +74,10 @@ public class HttpRouter<T extends Class<? extends IController>> extends Router<T
 
         public String getProtocol() {
             return protocol;
+        }
+
+        public List<Map<String, String>> getQuery() {
+            return query;
         }
     }
 
@@ -91,11 +95,20 @@ public class HttpRouter<T extends Class<? extends IController>> extends Router<T
                 var requestLineParts = Arrays.asList(requestLine.split(" "));
 
                 // parsing request line
+                List<Map<String, String>> query = List.of();
                 var method = requestLineParts.get(0);
                 var path = requestLineParts.get(1);
-                var protocol = requestLineParts.get(1);
+                if (path.contains("?")) {
+                    query = Stream
+                            .of(path.substring(path.indexOf("?") + 1).split("&")) // splitting on parts
+                            .map(qpart -> qpart.split("=")) // splitting on key-value
+                            .map(qp -> Map.of(qp[0], qp[1]))
+                            .toList();
+                    path = path.substring(0, path.indexOf("?"));
+                }
+                var protocol = requestLineParts.get(2);
                 var pathParts = Arrays.asList(path.split("/"));
-                var requestLineDto = new HttpRequestLine(method, pathParts, protocol);
+                var requestLineDto = new HttpRequestLine(method, pathParts, query, protocol);
 
                 // parsing headers
                 String headerLine;
