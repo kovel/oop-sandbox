@@ -20,35 +20,58 @@ const fs = require('fs');
 const url = require('url');
 const http = require('http');
 const puppeteer = require('puppeteer');
+const base64 = require('base64-js');
 
-const server = http.createServer(async (req, res) => {// url.parse(req.url)
-  (async () => {
-    const browser = await puppeteer.launch({
-      headless: 'new',
-      executablePath: '/app/chrome/linux-117.0.5931.0/chrome-linux64/chrome',
-      args: ['--no-sandbox']
+let PROTO_PATH = './sandbox.proto';
+let grpc = require('@grpc/grpc-js');
+let protoLoader = require('@grpc/proto-loader');
+// Suggested options for similarity to existing grpc.load behavior
+let packageDefinition = protoLoader.loadSync(
+    PROTO_PATH,
+    {keepCase: true,
+      longs: String,
+      enums: String,
+      defaults: true,
+      oneofs: true
     });
-    const page = await browser.newPage();
-    await page.goto(url.parse(req.url).query, {
-      waitUntil: 'networkidle2',
-    });
-    // page.pdf() is currently supported only in headless mode.
-    // @see https://bugs.chromium.org/p/chromium/issues/detail?id=753118
-    await page.pdf({
-      path: 'hn.pdf',
-      format: 'letter',
-    });
+let protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
+// The protoDescriptor object has the full package hierarchy
+let PdfService = protoDescriptor.PdfService;
 
-    await browser.close();
+async function getPdf(call, callback) {
+    (async (call) => {
+        console.log(`handling ${call.request.url}`)
+        const browser = await puppeteer.launch({
+            headless: 'new',
+            executablePath: '/app/chrome/linux-117.0.5931.0/chrome-linux64/chrome',
+            args: ['--no-sandbox']
+        });
+        const page = await browser.newPage();
+        await page.goto(call.request.url, {
+            waitUntil: 'networkidle2',
+        });
+        // page.pdf() is currently supported only in headless mode.
+        // @see https://bugs.chromium.org/p/chromium/issues/detail?id=753118
+        await page.pdf({
+            path: 'hn.pdf',
+            format: 'letter',
+        });
 
-    try {
-      const buffer = fs.readFileSync('hn.pdf')
-      res.writeHead(200, {'Content-Type': 'application/pdf'});
-      res.end(buffer)
-    } catch (e) {
-      res.writeHead(500);
-      res.end(JSON.stringify(e))
-    }
-  })();
+        await browser.close();
+
+        try {
+            callback(null, { data: fs.readFileSync('hn.pdf').toString('base64') });
+        } catch (e) {
+            res.writeHead(500);
+            res.end(JSON.stringify(e))
+        }
+    })(call);
+}
+
+let grpcServer = new grpc.Server();
+grpcServer.addService(PdfService.service, {
+  GetPdf: getPdf,
 });
-server.listen(8080)
+grpcServer.bindAsync('0.0.0.0:50051', grpc.ServerCredentials.createInsecure(), () => {
+  grpcServer.start();
+});
