@@ -1,0 +1,17 @@
+syntax = "proto3";
+option java_package = "org.example.service";
+option java_outer_classname = "Pdfs";
+
+service PdfService {
+  rpc GetPdf (PdfRequest) returns (PdfResponse) {}
+}
+
+//The request message.
+message PdfRequest {
+  string url = 1;
+}
+
+//The response message.
+message PdfResponse {
+  string data = 1;
+}

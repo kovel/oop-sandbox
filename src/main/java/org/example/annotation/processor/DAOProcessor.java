@@ -36,7 +36,11 @@ public class DAOProcessor implements Runnable {
             try {
                 var daoClass = this.registeredDAOMap.get(value);
                 var daoInstance = daoClass.getDeclaredConstructor().newInstance();
-                daoClass.getDeclaredMethod(SET_FILE_METHOD_NAME, String.class).invoke(daoInstance, path);
+
+
+                if (path != null && !path.isBlank()) {
+                    daoClass.getDeclaredMethod(SET_FILE_METHOD_NAME, String.class).invoke(daoInstance, path);
+                }
 
                 declaredField.setAccessible(true);
                 declaredField.set(this.controller, daoInstance);

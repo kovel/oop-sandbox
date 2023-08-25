@@ -2,6 +2,7 @@ package org.example.router;
 
 import org.example.annotation.processor.DAOProcessor;
 import org.example.controller.IController;
+import org.example.dao.DatabaseDAO;
 import org.example.dao.ImageDAO;
 
 public class DAORouterPlugin implements RouterPlugin {
@@ -10,6 +11,7 @@ public class DAORouterPlugin implements RouterPlugin {
         // annotation processor
         this.daoProcessor = new DAOProcessor();
         this.daoProcessor.registerDAO("image", ImageDAO.class); // ??
+        this.daoProcessor.registerDAO("database", DatabaseDAO.class); // ??
     }
 
     @Override
